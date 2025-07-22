@@ -1,0 +1,11 @@
+# Allow all web crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin routes
+Disallow: /login
+Disallow: /admin/
+Disallow: /admin/*
+
+# Sitemap
+Sitemap: https://drjemishskinclinic.com/sitemap.xml 

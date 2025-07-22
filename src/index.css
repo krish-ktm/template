@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base optimizations */
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.swiper-pagination {
+  position: relative !important;
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background-color: #d1d5db;
+  border-radius: 9999px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.swiper-pagination-bullet-active {
+  width: 16px;
+  background-color: #7c3aed;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+/* Language toggle transition - only applied when explicitly triggered */
+.toggle-with-transition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Performance optimizations */
+.scroll-container {
+  contain: content;
+  content-visibility: auto;
+}
+
+.fixed-element {
+  contain: layout style paint;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Accessibility - Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom Calendar Styles */
+@layer components {
+  .mr-calendar {
+    @apply w-full bg-transparent border-0 shadow-none rounded-xl overflow-hidden [contain:content];
+  }
+
+  .mr-calendar .react-datepicker__month-container {
+    @apply w-full float-none bg-white rounded-xl shadow-sm border border-gray-100 [contain:content];
+  }
+
+  .mr-calendar .react-datepicker__header {
+    @apply bg-white border-0 pb-4 rounded-t-xl;
+  }
+
+  .mr-calendar .react-datepicker__current-month {
+    @apply text-[#2B5C4B] font-semibold py-4 text-lg;
+  }
+
+  .mr-calendar .react-datepicker__day-names {
+    @apply border-b border-gray-100 pb-2 mb-2 pt-4 bg-white flex justify-between px-2;
+  }
+
+  .mr-calendar .react-datepicker__day-name {
+    @apply text-gray-500 text-xs font-medium w-[calc(100%/7)] inline-block text-center;
+  }
+
+  .mr-calendar .react-datepicker__month {
+    @apply m-0 p-2 [contain:content];
+  }
+
+  .mr-calendar .react-datepicker__week {
+    @apply flex justify-between mb-1;
+  }
+
+  /* Desktop Calendar Day */
+  .mr-calendar .react-datepicker__day {
+    @apply m-0.5 p-1 w-[calc(100%/7-0.5rem)] h-20 flex flex-col items-center justify-start 
+      bg-white text-gray-900 border border-transparent rounded-xl transition-all duration-200
+      hover:bg-[#2B5C4B]/5 hover:border-[#2B5C4B]/20 hover:shadow-sm [contain:content] [will-change:transform];
+  }
+
+  /* Mobile Calendar Day */
+  .mr-calendar--mobile .react-datepicker__day {
+    @apply m-0.5 p-1 w-[calc(100%/7-0.5rem)] h-10 flex flex-col items-center justify-center 
+      bg-white text-gray-900 border border-transparent rounded-lg transition-all duration-200
+      hover:bg-[#2B5C4B]/5 hover:border-[#2B5C4B]/20 hover:shadow-sm [contain:content] [will-change:transform];
+  }
+
+  .mr-calendar .react-datepicker__day--selected {
+    @apply bg-[#2B5C4B] text-white border-[#2B5C4B]/30 shadow-lg shadow-[#2B5C4B]/10
+      hover:bg-[#234539] hover:border-[#2B5C4B]/40;
+  }
+
+  .mr-calendar .react-datepicker__day--keyboard-selected {
+    @apply bg-[#2B5C4B]/5 text-[#2B5C4B];
+  }
+
+  .mr-calendar .react-datepicker__day--disabled {
+    @apply text-gray-300 bg-gray-50/50 cursor-not-allowed opacity-50 border-transparent
+      hover:bg-gray-50/50 hover:border-transparent hover:shadow-none;
+  }
+
+  .mr-calendar .react-datepicker__day--outside-month {
+    @apply text-gray-300 pointer-events-none opacity-0;
+  }
+
+  .mr-calendar .react-datepicker__navigation {
+    @apply top-4 z-10;
+  }
+
+  .mr-calendar .react-datepicker__navigation--previous {
+    @apply left-4 w-8 h-8 rounded-full hover:bg-[#2B5C4B]/5;
+  }
+
+  .mr-calendar .react-datepicker__navigation--next {
+    @apply right-4 w-8 h-8 rounded-full hover:bg-[#2B5C4B]/5;
+  }
+
+  .mr-calendar .react-datepicker__navigation-icon::before {
+    @apply border-[#2B5C4B];
+  }
+
+  /* Calendar Day Content */
+  .mr-calendar-day {
+    @apply w-full h-full flex flex-col items-center pt-2 [contain:content];
+  }
+
+  .mr-calendar-day__number {
+    @apply text-sm font-medium mb-1;
+  }
+
+  .mr-calendar-day__slots {
+    @apply text-[10px] font-medium text-gray-500 transition-colors duration-200;
+  }
+
+  .react-datepicker__day--selected .mr-calendar-day__slots {
+    @apply text-white/90;
+  }
+
+  .mr-calendar-day__indicator {
+    @apply absolute top-2 right-2 w-2 h-2 rounded-full transition-all duration-200;
+  }
+
+  /* Mobile Calendar Day Content */
+  .mr-calendar-day-mobile {
+    @apply w-full h-full flex flex-col items-center justify-center relative [contain:content];
+  }
+
+  .mr-calendar-day-mobile__number {
+    @apply text-sm font-medium;
+  }
+
+  .mr-calendar-day-mobile__indicator {
+    @apply absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full;
+  }
+
+  /* Status Indicators */
+  .mr-calendar-day-mobile__indicator--available,
+  .mr-calendar-day__indicator--available,
+  .mr-calendar__legend-dot--available {
+    @apply bg-[#2B5C4B] shadow-[0_1px_2px_0_rgb(43_92_75_/_0.2)];
+  }
+
+  .mr-calendar-day-mobile__indicator--full,
+  .mr-calendar-day__indicator--full,
+  .mr-calendar__legend-dot--full {
+    @apply bg-red-500 shadow-[0_1px_2px_0_rgb(239_68_68_/_0.2)];
+  }
+
+  /* Calendar legend */
+  .mr-calendar__legend {
+    @apply flex items-center gap-6 mt-6 px-6 justify-center border-t border-gray-100 pt-4 pb-2 bg-white;
+  }
+
+  .mr-calendar__legend-item {
+    @apply flex items-center gap-2 text-sm text-gray-600;
+  }
+
+  .mr-calendar__legend-dot {
+    @apply w-2 h-2 rounded-full transition-all duration-200;
+  }
+
+  .mr-calendar__legend-dot--disabled {
+    @apply bg-gray-300 shadow-[0_1px_2px_0_rgb(209_213_219_/_0.2)];
+  }
+}
