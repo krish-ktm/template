@@ -217,7 +217,7 @@ EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert initial data
 INSERT INTO users (email, password, role, name, status)
-VALUES ('admin@example.com', '$2b$10$qV8tZ.LE0J5kxAkRJ2/aU.5WLrFL982JkBZZZBppur5J01KrpgEI.', 'superadmin', 'Admin User', 'active');
+VALUES ('admin@example.com', '$2b$12$l7PHFZ2akPH8x8N8KPAJ6uiHUbcWzxwb5Adbri9XFG9dInIHuv8KS', 'superadmin', 'Admin User', 'active');
 
 INSERT INTO working_hours (day, is_working, morning_start, morning_end, evening_start, evening_end, slot_interval, slots) VALUES
 ('Tuesday', true, '09:30 AM', '12:30 PM', '04:30 PM', '06:30 PM', '15', '[{"time":"09:30 AM","maxBookings":3},{"time":"09:45 AM","maxBookings":3},{"time":"10:00 AM","maxBookings":3},{"time":"10:15 AM","maxBookings":3},{"time":"10:30 AM","maxBookings":3},{"time":"10:45 AM","maxBookings":3},{"time":"11:00 AM","maxBookings":3},{"time":"11:15 AM","maxBookings":3},{"time":"11:30 AM","maxBookings":3},{"time":"11:45 AM","maxBookings":3},{"time":"12:00 PM","maxBookings":3},{"time":"12:15 PM","maxBookings":3},{"time":"12:30 PM","maxBookings":3},{"time":"04:30 PM","maxBookings":3},{"time":"04:45 PM","maxBookings":3},{"time":"05:00 PM","maxBookings":3},{"time":"05:15 PM","maxBookings":3},{"time":"05:30 PM","maxBookings":3},{"time":"05:45 PM","maxBookings":3},{"time":"06:00 PM","maxBookings":3},{"time":"06:15 PM","maxBookings":3},{"time":"06:30 PM","maxBookings":3}]'),
