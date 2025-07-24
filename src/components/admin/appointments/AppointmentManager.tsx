@@ -15,6 +15,11 @@ interface FilterState {
   dateRange: 'today' | 'tomorrow' | 'week' | 'all';
   status: 'all' | 'pending' | 'completed' | 'cancelled';
   search: string;
+  ageRange: 'all' | 'child' | 'adult' | 'senior';
+  city: string;
+  timeSlot: 'all' | 'morning' | 'evening';
+  sortBy: 'date' | 'name' | 'created';
+  sortOrder: 'asc' | 'desc';
 }
 
 export function AppointmentManager() {
@@ -26,7 +31,12 @@ export function AppointmentManager() {
   const [filters, setFilters] = useState<FilterState>({
     dateRange: 'today',
     status: 'all',
-    search: ''
+    search: '',
+    ageRange: 'all',
+    city: '',
+    timeSlot: 'all',
+    sortBy: 'date',
+    sortOrder: 'asc'
   });
 
   useEffect(() => {
@@ -103,6 +113,50 @@ export function AppointmentManager() {
       filtered = filtered.filter(appointment => appointment.status === filters.status);
     }
 
+    // Apply age range filter
+    if (filters.ageRange !== 'all') {
+      filtered = filtered.filter(appointment => {
+        const age = appointment.age;
+        switch (filters.ageRange) {
+          case 'child':
+            return age >= 0 && age <= 17;
+          case 'adult':
+            return age >= 18 && age <= 59;
+          case 'senior':
+            return age >= 60;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply city filter
+    if (filters.city) {
+      const cityLower = filters.city.toLowerCase();
+      filtered = filtered.filter(appointment =>
+        appointment.city.toLowerCase().includes(cityLower)
+      );
+    }
+
+    // Apply time slot filter
+    if (filters.timeSlot !== 'all') {
+      filtered = filtered.filter(appointment => {
+        const time = appointment.appointment_time;
+        const hour = parseInt(time.split(':')[0]);
+        const isPM = time.includes('PM');
+        const hour24 = isPM && hour !== 12 ? hour + 12 : (!isPM && hour === 12 ? 0 : hour);
+        
+        switch (filters.timeSlot) {
+          case 'morning':
+            return hour24 >= 9 && hour24 < 13; // 9 AM to 1 PM
+          case 'evening':
+            return hour24 >= 16 && hour24 < 19; // 4 PM to 7 PM
+          default:
+            return true;
+        }
+      });
+    }
+
     // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
@@ -113,6 +167,34 @@ export function AppointmentManager() {
         appointment.id.toLowerCase().includes(searchLower)
       );
     }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (filters.sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'created':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'date':
+        default:
+          const dateComparison = a.appointment_date.localeCompare(b.appointment_date);
+          if (dateComparison === 0) {
+            // If dates are the same, sort by time
+            const timeA = new Date(`1970/01/01 ${a.appointment_time}`).getTime();
+            const timeB = new Date(`1970/01/01 ${b.appointment_time}`).getTime();
+            comparison = timeA - timeB;
+          } else {
+            comparison = dateComparison;
+          }
+          break;
+      }
+      
+      return filters.sortOrder === 'desc' ? -comparison : comparison;
+    });
 
     setFilteredAppointments(filtered);
   };

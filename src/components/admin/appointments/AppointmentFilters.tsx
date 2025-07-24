@@ -1,11 +1,17 @@
 import { Search, Calendar, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 interface FilterState {
   dateRange: 'today' | 'tomorrow' | 'week' | 'all';
   status: 'all' | 'pending' | 'completed' | 'cancelled';
   search: string;
+  ageRange: 'all' | 'child' | 'adult' | 'senior';
+  city: string;
+  timeSlot: 'all' | 'morning' | 'evening';
+  sortBy: 'date' | 'name' | 'created';
+  sortOrder: 'asc' | 'desc';
 }
 
 interface AppointmentFiltersProps {
@@ -34,12 +40,36 @@ export function AppointmentFilters({
     onFiltersChange({
       dateRange: 'today',
       status: 'all',
-      search: ''
+      search: '',
+      ageRange: 'all',
+      city: '',
+      timeSlot: 'all',
+      sortBy: 'date',
+      sortOrder: 'asc'
     });
     setShowAdvanced(false);
   };
 
-  const hasActiveFilters = filters.status !== 'all' || filters.search !== '' || filters.dateRange !== 'today';
+  const hasActiveFilters = useMemo(() => {
+    return filters.status !== 'all' || 
+           filters.search !== '' || 
+           filters.dateRange !== 'today' ||
+           filters.ageRange !== 'all' ||
+           filters.city !== '' ||
+           filters.timeSlot !== 'all' ||
+           filters.sortBy !== 'date' ||
+           filters.sortOrder !== 'asc';
+  }, [filters]);
+
+  const getDateRangeLabel = (range: string) => {
+    switch (range) {
+      case 'today': return 'Today';
+      case 'tomorrow': return 'Tomorrow';
+      case 'week': return 'This Week';
+      case 'all': return 'All Dates';
+      default: return range;
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -93,6 +123,11 @@ export function AppointmentFilters({
           >
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filters</span>
+            {hasActiveFilters && !showAdvanced && (
+              <span className="bg-[#2B5C4B] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                !
+              </span>
+            )}
           </button>
         </div>
 
@@ -107,43 +142,120 @@ export function AppointmentFilters({
               className="overflow-hidden"
             >
               <div className="pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Status Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
-                    </label>
-                    <select
-                      value={filters.status}
-                      onChange={(e) => handleFilterChange('status', e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
+                <div className="space-y-4">
+                  {/* First Row - Status and Age Range */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                      </label>
+                      <select
+                        value={filters.status}
+                        onChange={(e) => handleFilterChange('status', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
 
-                  {/* Results Count */}
-                  <div className="flex items-end">
-                    <div className="bg-[#2B5C4B]/5 rounded-lg p-3 w-full">
-                      <p className="text-sm text-gray-600">Results</p>
-                      <p className="text-lg font-semibold text-[#2B5C4B]">
-                        {filteredCount} / {totalCount}
-                      </p>
+                    {/* Age Range Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Age Group
+                      </label>
+                      <select
+                        value={filters.ageRange}
+                        onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="all">All Ages</option>
+                        <option value="child">Child (0-17)</option>
+                        <option value="adult">Adult (18-59)</option>
+                        <option value="senior">Senior (60+)</option>
+                      </select>
+                    </div>
+
+                    {/* Time Slot Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Time Period
+                      </label>
+                      <select
+                        value={filters.timeSlot}
+                        onChange={(e) => handleFilterChange('timeSlot', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="all">All Times</option>
+                        <option value="morning">Morning (9 AM - 1 PM)</option>
+                        <option value="evening">Evening (4 PM - 7 PM)</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Clear Filters */}
-                  <div className="flex items-end">
+                  {/* Second Row - City and Sorting */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* City Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Filter by city..."
+                        value={filters.city}
+                        onChange={(e) => handleFilterChange('city', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      />
+                    </div>
+
+                    {/* Sort By */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sort By
+                      </label>
+                      <select
+                        value={filters.sortBy}
+                        onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="date">Appointment Date</option>
+                        <option value="name">Patient Name</option>
+                        <option value="created">Booking Date</option>
+                      </select>
+                    </div>
+
+                    {/* Sort Order */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Order
+                      </label>
+                      <select
+                        value={filters.sortOrder}
+                        onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Third Row - Results and Clear */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-gray-100">
+                    <div className="text-sm text-gray-600">
+                      Showing <span className="font-semibold text-[#2B5C4B]">{filteredCount}</span> of <span className="font-semibold">{totalCount}</span> appointments
+                    </div>
                     {hasActiveFilters && (
                       <button
                         onClick={clearFilters}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         <X className="h-4 w-4" />
-                        Clear Filters
+                        Clear All Filters
                       </button>
                     )}
                   </div>
@@ -160,7 +272,7 @@ export function AppointmentFilters({
             {filters.dateRange !== 'today' && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
                 <Calendar className="h-3 w-3" />
-                {filters.dateRange}
+                {getDateRangeLabel(filters.dateRange)}
               </span>
             )}
             {filters.status !== 'all' && (
@@ -168,10 +280,30 @@ export function AppointmentFilters({
                 Status: {filters.status}
               </span>
             )}
+            {filters.ageRange !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Age: {filters.ageRange}
+              </span>
+            )}
+            {filters.city && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                City: {filters.city}
+              </span>
+            )}
+            {filters.timeSlot !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Time: {filters.timeSlot}
+              </span>
+            )}
             {filters.search && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
                 <Search className="h-3 w-3" />
                 "{filters.search}"
+              </span>
+            )}
+            {(filters.sortBy !== 'date' || filters.sortOrder !== 'asc') && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Sort: {filters.sortBy} ({filters.sortOrder})
               </span>
             )}
           </div>
