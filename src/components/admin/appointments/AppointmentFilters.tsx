@@ -1,7 +1,7 @@
 import { Search, Calendar, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useMemo } from 'react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
+// date-fns utilities not used in this component
 
 interface FilterState {
   dateRange: 'today' | 'tomorrow' | 'week' | 'all';
@@ -29,12 +29,60 @@ export function AppointmentFilters({
 }: AppointmentFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Immediate update for non-search filters
   const handleFilterChange = (key: keyof FilterState, value: string) => {
-    onFiltersChange({
-      ...filters,
-      [key]: value
-    });
+    if (key === 'search') {
+      // Search is handled with debouncing below
+      setSearchInput(value);
+    } else if (key === 'city') {
+      // City search debounced similarly
+      setCityInput(value);
+    } else {
+      onFiltersChange({
+        ...filters,
+        [key]: value
+      });
+    }
   };
+
+  // ---- Search with debounce ----
+  const [searchInput, setSearchInput] = useState(filters.search);
+
+  // keep local input in sync when outer filter resets (e.g., clear filters)
+  useEffect(() => {
+    setSearchInput(filters.search);
+  }, [filters.search]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        onFiltersChange({
+          ...filters,
+          search: searchInput
+        });
+      }
+    }, 400); // 400-ms debounce
+    return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  // ---- City search with debounce ----
+  const [cityInput, setCityInput] = useState(filters.city);
+
+  useEffect(() => {
+    setCityInput(filters.city);
+  }, [filters.city]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (cityInput !== filters.city) {
+        onFiltersChange({
+          ...filters,
+          city: cityInput
+        });
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [cityInput]);
 
   const clearFilters = () => {
     onFiltersChange({
@@ -84,7 +132,7 @@ export function AppointmentFilters({
             <input
               type="text"
               placeholder="Search by name, phone, city, or ID..."
-              value={filters.search}
+              value={searchInput}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
             />
@@ -206,7 +254,7 @@ export function AppointmentFilters({
                       <input
                         type="text"
                         placeholder="Filter by city..."
-                        value={filters.city}
+                        value={cityInput}
                         onChange={(e) => handleFilterChange('city', e.target.value)}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
                       />

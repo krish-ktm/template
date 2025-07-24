@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { BookingDetails } from '../../../types';
 import { toast } from 'react-hot-toast';
-import { LoadingSpinner } from '../../LoadingSpinner';
+// LoadingSpinner no longer used as full-page loader; using small inline spinner instead.
 import { useNavigate } from 'react-router-dom';
 import { AppointmentsTable } from './AppointmentsTable';
 import { AppointmentFilters } from './AppointmentFilters';
-import { format, startOfToday, addDays, subDays } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
-
-const TIMEZONE = 'Asia/Kolkata';
+import { format, startOfToday, addDays } from 'date-fns';
+import { Pagination } from './Pagination';
 
 interface FilterState {
   dateRange: 'today' | 'tomorrow' | 'week' | 'all';
@@ -25,7 +23,7 @@ interface FilterState {
 export function AppointmentManager() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<BookingDetails[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<BookingDetails[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
@@ -39,165 +37,124 @@ export function AppointmentManager() {
     sortOrder: 'asc'
   });
 
+  // Pagination state
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Fetch whenever filters or page change
   useEffect(() => {
     loadAppointments();
-  }, []);
+  }, [filters, currentPage]);
 
+  // Reset to first page whenever filters change
   useEffect(() => {
-    applyFilters();
-  }, [appointments, filters]);
+    setCurrentPage(1);
+  }, [filters]);
 
   const loadAppointments = async () => {
     try {
       setLoading(true);
+
       const userStr = localStorage.getItem('user');
       if (!userStr) {
         navigate('/login');
         throw new Error('Authentication required');
       }
 
-      // Get date range for fetching
-      const today = startOfToday();
-      const startDate = subDays(today, 7); // Get past week for context
-      const endDate = addDays(today, 30); // Get next month
+      const PAGE_FROM = (currentPage - 1) * PAGE_SIZE;
+      const PAGE_TO = PAGE_FROM + PAGE_SIZE - 1;
 
-      const { data, error } = await supabase
+      // Start building query
+      let query = supabase
         .from('appointments')
-        .select('*')
-        .gte('appointment_date', format(startDate, 'yyyy-MM-dd'))
-        .lte('appointment_date', format(endDate, 'yyyy-MM-dd'))
-        .order('appointment_date', { ascending: false })
-        .order('appointment_time', { ascending: true });
+        .select('*', { count: 'exact' });
 
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error: unknown) {
-      console.error('Error loading appointments:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load appointments';
-      toast.error(errorMessage);
-      if (error instanceof Error && error.message === 'Authentication required') {
-        navigate('/login');
+      // Date range filter
+      const today = startOfToday();
+      if (filters.dateRange === 'today') {
+        query = query.eq('appointment_date', format(today, 'yyyy-MM-dd'));
+      } else if (filters.dateRange === 'tomorrow') {
+        const tomorrow = addDays(today, 1);
+        query = query.eq('appointment_date', format(tomorrow, 'yyyy-MM-dd'));
+      } else if (filters.dateRange === 'week') {
+        const weekEnd = addDays(today, 7);
+        query = query.gte('appointment_date', format(today, 'yyyy-MM-dd'))
+                     .lte('appointment_date', format(weekEnd, 'yyyy-MM-dd'));
       }
+
+      // Status filter
+      if (filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+
+      // Age range filter
+      if (filters.ageRange === 'child') {
+        query = query.lte('age', 17);
+      } else if (filters.ageRange === 'adult') {
+        query = query.gte('age', 18).lte('age', 59);
+      } else if (filters.ageRange === 'senior') {
+        query = query.gte('age', 60);
+      }
+
+      // City filter
+      if (filters.city) {
+        query = query.ilike('city', `%${filters.city}%`);
+      }
+
+      // Time slot filter (simple AM/PM approximation)
+      if (filters.timeSlot === 'morning') {
+        query = query.ilike('appointment_time', '%AM%');
+      } else if (filters.timeSlot === 'evening') {
+        query = query.ilike('appointment_time', '%PM%');
+      }
+
+      // Search filter across multiple fields
+      if (filters.search) {
+        const term = filters.search.trim();
+        const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(term);
+        const orFilters = [
+          `name.ilike.*${term}*`,
+          `city.ilike.*${term}*`,
+          `phone.ilike.*${term}*`
+        ];
+        if (isUuid) {
+          orFilters.push(`id.eq.${term}`);
+        }
+        query = query.or(orFilters.join(','));
+      }
+
+      // Sorting
+      switch (filters.sortBy) {
+        case 'name':
+          query = query.order('name', { ascending: filters.sortOrder === 'asc' });
+          break;
+        case 'created':
+          query = query.order('created_at', { ascending: filters.sortOrder === 'asc' });
+          break;
+        case 'date':
+        default:
+          query = query
+            .order('appointment_date', { ascending: filters.sortOrder === 'asc' })
+            .order('appointment_time', { ascending: filters.sortOrder === 'asc' });
+          break;
+      }
+
+      // Pagination
+      query = query.range(PAGE_FROM, PAGE_TO);
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+
+      setAppointments(data as BookingDetails[]);
+      setTotalCount(count || 0);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
     }
   };
-
-  const applyFilters = () => {
-    let filtered = [...appointments];
-    const today = startOfToday();
-    const tomorrow = addDays(today, 1);
-    const weekStart = today;
-    const weekEnd = addDays(today, 7);
-
-    // Apply date range filter
-    if (filters.dateRange !== 'all') {
-      filtered = filtered.filter(appointment => {
-        const appointmentDate = new Date(appointment.appointment_date);
-        
-        switch (filters.dateRange) {
-          case 'today':
-            return format(appointmentDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
-          case 'tomorrow':
-            return format(appointmentDate, 'yyyy-MM-dd') === format(tomorrow, 'yyyy-MM-dd');
-          case 'week':
-            return appointmentDate >= weekStart && appointmentDate <= weekEnd;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply status filter
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(appointment => appointment.status === filters.status);
-    }
-
-    // Apply age range filter
-    if (filters.ageRange !== 'all') {
-      filtered = filtered.filter(appointment => {
-        const age = appointment.age;
-        switch (filters.ageRange) {
-          case 'child':
-            return age >= 0 && age <= 17;
-          case 'adult':
-            return age >= 18 && age <= 59;
-          case 'senior':
-            return age >= 60;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply city filter
-    if (filters.city) {
-      const cityLower = filters.city.toLowerCase();
-      filtered = filtered.filter(appointment =>
-        appointment.city.toLowerCase().includes(cityLower)
-      );
-    }
-
-    // Apply time slot filter
-    if (filters.timeSlot !== 'all') {
-      filtered = filtered.filter(appointment => {
-        const time = appointment.appointment_time;
-        const hour = parseInt(time.split(':')[0]);
-        const isPM = time.includes('PM');
-        const hour24 = isPM && hour !== 12 ? hour + 12 : (!isPM && hour === 12 ? 0 : hour);
-        
-        switch (filters.timeSlot) {
-          case 'morning':
-            return hour24 >= 9 && hour24 < 13; // 9 AM to 1 PM
-          case 'evening':
-            return hour24 >= 16 && hour24 < 19; // 4 PM to 7 PM
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Apply search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(appointment =>
-        appointment.name.toLowerCase().includes(searchLower) ||
-        appointment.phone.includes(filters.search) ||
-        appointment.city.toLowerCase().includes(searchLower) ||
-        appointment.id.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (filters.sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'created':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-        case 'date':
-        default:
-          const dateComparison = a.appointment_date.localeCompare(b.appointment_date);
-          if (dateComparison === 0) {
-            // If dates are the same, sort by time
-            const timeA = new Date(`1970/01/01 ${a.appointment_time}`).getTime();
-            const timeB = new Date(`1970/01/01 ${b.appointment_time}`).getTime();
-            comparison = timeA - timeB;
-          } else {
-            comparison = dateComparison;
-          }
-          break;
-      }
-      
-      return filters.sortOrder === 'desc' ? -comparison : comparison;
-    });
-
-    setFilteredAppointments(filtered);
-  };
+  // Local applyFilters logic removed – filtering done server-side now.
 
   const handleStatusUpdate = async (appointmentId: string, newStatus: 'completed' | 'cancelled') => {
     try {
@@ -254,9 +211,7 @@ export function AppointmentManager() {
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-6 pt-12 sm:pt-0 mt-4 sm:mt-0 px-2 sm:px-0">
@@ -264,32 +219,48 @@ export function AppointmentManager() {
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Appointment Management</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Showing {filteredAppointments.length} of {appointments.length} appointments
+            Showing {appointments.length} of {totalCount} appointments
           </p>
         </div>
         <button
           onClick={loadAppointments}
-          className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-[#2B5C4B] text-white rounded-lg hover:bg-[#234539] transition-colors text-sm"
+          disabled={loading}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#2B5C4B] text-white rounded-lg transition-colors text-sm disabled:opacity-60"
         >
-          Refresh
+          {loading ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            'Refresh'
+          )}
         </button>
       </div>
 
       <AppointmentFilters
         filters={filters}
         onFiltersChange={setFilters}
-        totalCount={appointments.length}
-        filteredCount={filteredAppointments.length}
+        totalCount={totalCount}
+        filteredCount={totalCount}
       />
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-[#2B5C4B] rounded-full animate-spin" />
+          </div>
+        )}
         <AppointmentsTable
-          appointments={filteredAppointments}
+          appointments={appointments}
           onStatusUpdate={handleStatusUpdate}
           onDelete={handleDelete}
           actionLoading={actionLoading}
         />
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 }
