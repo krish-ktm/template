@@ -112,13 +112,15 @@ export function AppointmentManager() {
       if (filters.search) {
         const term = filters.search.trim();
         const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(term);
+        const safeTerm = term.replace(/,/g, '\\,');
         const orFilters = [
-          `name.ilike.*${term}*`,
-          `city.ilike.*${term}*`,
-          `phone.ilike.*${term}*`
+          `name.ilike.*${safeTerm}*`,
+          `city.ilike.*${safeTerm}*`,
+          `phone.ilike.*${safeTerm}*`
         ];
+        // note: commas are escaped to avoid breaking OR filter syntax
         if (isUuid) {
-          orFilters.push(`id.eq.${term}`);
+          orFilters.push(`id.eq.${safeTerm}`);
         }
         query = query.or(orFilters.join(','));
       }
