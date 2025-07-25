@@ -88,7 +88,7 @@ export function AppointmentManager() {
 
         query = query
           .gte('appointment_date', format(weekStart, 'yyyy-MM-dd'))
-          .lte('appointment_date', format(weekEnd, 'yyyy-MM-dd'));
+                     .lte('appointment_date', format(weekEnd, 'yyyy-MM-dd'));
       } else if (filters.dateRange === 'custom') {
         if (filters.startDate) {
           query = query.gte('appointment_date', filters.startDate);

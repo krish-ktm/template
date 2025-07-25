@@ -1,6 +1,7 @@
 import { Search, Calendar, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo, useEffect } from 'react';
+import DateRangePickerPopover from './DateRangePickerPopover';
 // date-fns utilities not used in this component
 
 interface FilterState {
@@ -39,12 +40,28 @@ export function AppointmentFilters({
     } else if (key === 'city') {
       // City search debounced similarly
       setCityInput(value);
+    } else if (key === 'startDate' || key === 'endDate') {
+      // Setting a custom range automatically enables custom mode
+      onFiltersChange({
+        ...filters,
+        [key]: value,
+        dateRange: 'custom'
+      });
     } else {
       onFiltersChange({
         ...filters,
         [key]: value
       });
     }
+  };
+
+  const handleDateRangeSelect = (range: { startDate: string; endDate: string }) => {
+    onFiltersChange({
+      ...filters,
+      dateRange: 'custom',
+      startDate: range.startDate,
+      endDate: range.endDate
+    });
   };
 
   // ---- Search with debounce ----
@@ -110,7 +127,9 @@ export function AppointmentFilters({
            filters.city !== '' ||
            filters.timeSlot !== 'all' ||
            filters.sortBy !== 'date' ||
-           filters.sortOrder !== 'asc';
+           filters.sortOrder !== 'asc' ||
+           filters.startDate !== undefined ||
+           filters.endDate !== undefined;
   }, [filters]);
 
   const getDateRangeLabel = (range: string) => {
@@ -119,6 +138,7 @@ export function AppointmentFilters({
       case 'tomorrow': return 'Tomorrow';
       case 'week': return 'This Week';
       case 'all': return 'All Dates';
+      case 'custom': return 'Date Range';
       default: return range;
     }
   };
@@ -148,7 +168,6 @@ export function AppointmentFilters({
               { key: 'today', label: 'Today' },
               { key: 'tomorrow', label: 'Tomorrow' },
               { key: 'week', label: 'This Week' },
-              { key: 'custom', label: 'Range' },
               { key: 'all', label: 'All' }
             ].map(({ key, label }) => (
               <button
@@ -192,7 +211,7 @@ export function AppointmentFilters({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden"
+              className="overflow-visible"
             >
               <div className="pt-4 border-t border-gray-200">
                 <div className="space-y-4">
@@ -297,33 +316,15 @@ export function AppointmentFilters({
                     </div>
                   </div>
 
-                  {/* Third Row - Date Range Picker when custom */}
-                  {filters.dateRange === 'custom' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          From
-                        </label>
-                        <input
-                          type="date"
-                          value={filters.startDate || ''}
-                          onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          To
-                        </label>
-                        <input
-                          type="date"
-                          value={filters.endDate || ''}
-                          onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Date Range Picker */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                    <DateRangePickerPopover
+                      startDate={filters.startDate}
+                      endDate={filters.endDate}
+                      onSelect={handleDateRangeSelect}
+                    />
+                  </div>
 
                   {/* Third Row - Results and Clear */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-gray-100">
@@ -350,7 +351,7 @@ export function AppointmentFilters({
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
             <span className="text-sm text-gray-500">Active filters:</span>
-            {filters.dateRange !== 'today' && (
+            {filters.dateRange !== 'today' && filters.dateRange !== 'custom' && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
                 <Calendar className="h-3 w-3" />
                 {getDateRangeLabel(filters.dateRange)}
@@ -387,7 +388,7 @@ export function AppointmentFilters({
                 Sort: {filters.sortBy} ({filters.sortOrder})
               </span>
             )}
-            {filters.dateRange === 'custom' && (
+            {(filters.startDate || filters.endDate) && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
                 <Calendar className="h-3 w-3" />
                 {filters.startDate || '...'} - {filters.endDate || '...'}

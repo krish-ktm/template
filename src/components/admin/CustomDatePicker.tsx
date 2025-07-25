@@ -119,17 +119,17 @@ export function CustomDatePicker({
       }
     };
 
-    const isSelected = (day: Date) => {
-      return selectedDates.some(selectedDate => isSameDay(selectedDate, day));
-    };
+    const sortedSelected = [...selectedDates].sort((a,b)=>a.getTime()-b.getTime());
+    const firstSelected = sortedSelected[0];
+    const lastSelected = sortedSelected[sortedSelected.length-1];
+
+    const isSelected = (day: Date) => selectedDates.some(d => isSameDay(d, day));
+
+    const isRange = selectedDates.length > 1;
 
     const isInRange = (day: Date) => {
-      if (!isSelecting || !selectionStart) return false;
-      
-      return (
-        (isBefore(selectionStart, day) && isAfter(day, selectionStart)) ||
-        (isAfter(selectionStart, day) && isBefore(day, selectionStart))
-      );
+      if (!isRange) return false;
+      return isAfter(day, firstSelected) && isBefore(day, lastSelected);
     };
 
     const isDisabled = (day: Date) => {
@@ -143,18 +143,26 @@ export function CustomDatePicker({
       const isCurrentDay = isToday(day);
       const daySelected = isSelected(day);
       const dayInRange = isInRange(day);
+
+      const isRangeStart = isRange && isSameDay(day, firstSelected);
+      const isRangeEnd = isRange && isSameDay(day, lastSelected);
+      const singleSelected = daySelected && !isRange;
       const dayDisabled = isDisabled(day);
       
       return (
         <button
           key={`day-${index}`}
           type="button" // Prevent form submission
-          className={`relative h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center text-xs sm:text-sm rounded-full 
+          className={`relative h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center text-xs sm:text-sm ${
+            dayInRange ? 'bg-[#2B5C4B] text-white' : ''
+          } ${daySelected ? 'bg-[#2B5C4B] text-white' : ''} 
             ${!dayDisabled && 'cursor-pointer hover:bg-[#2B5C4B]/10 transition-colors'} 
-            ${daySelected ? 'bg-[#2B5C4B] text-white hover:bg-[#2B5C4B]' : ''} 
-            ${dayInRange ? 'bg-[#2B5C4B]/20' : ''} 
             ${dayDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-800'} 
-            ${isCurrentDay && !daySelected ? 'font-bold' : ''}`}
+            ${isCurrentDay && !daySelected ? 'font-bold' : ''} 
+            ${isRangeStart ? 'rounded-l-md' : ''} 
+            ${isRangeEnd ? 'rounded-r-md' : ''} 
+            ${singleSelected ? 'rounded-md' : ''} 
+            ${!isRangeStart && !isRangeEnd && !singleSelected ? 'rounded-none' : ''}`}
           onClick={() => !dayDisabled && handleDateClick(day)}
           disabled={dayDisabled}
         >
