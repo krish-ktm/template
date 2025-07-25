@@ -6,11 +6,13 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { AppointmentsTable } from './AppointmentsTable';
 import { AppointmentFilters } from './AppointmentFilters';
-import { format, startOfToday, addDays } from 'date-fns';
+import { format, startOfToday, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { Pagination } from './Pagination';
 
 interface FilterState {
-  dateRange: 'today' | 'tomorrow' | 'week' | 'all';
+  dateRange: 'today' | 'tomorrow' | 'week' | 'all' | 'custom';
+  startDate?: string; // YYYY-MM-DD when dateRange === 'custom'
+  endDate?: string;   // YYYY-MM-DD when dateRange === 'custom'
   status: 'all' | 'pending' | 'completed' | 'cancelled';
   search: string;
   ageRange: 'all' | 'child' | 'adult' | 'senior';
@@ -34,7 +36,9 @@ export function AppointmentManager() {
     city: '',
     timeSlot: 'all',
     sortBy: 'date',
-    sortOrder: 'asc'
+    sortOrder: 'asc',
+    startDate: undefined,
+    endDate: undefined
   });
 
   // Pagination state
@@ -77,9 +81,21 @@ export function AppointmentManager() {
         const tomorrow = addDays(today, 1);
         query = query.eq('appointment_date', format(tomorrow, 'yyyy-MM-dd'));
       } else if (filters.dateRange === 'week') {
-        const weekEnd = addDays(today, 7);
-        query = query.gte('appointment_date', format(today, 'yyyy-MM-dd'))
-                     .lte('appointment_date', format(weekEnd, 'yyyy-MM-dd'));
+        // "This Week" should include all days of the current calendar week (Mon-Sun).
+        // Using ISO week definition with Monday as the first day of the week.
+        const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+
+        query = query
+          .gte('appointment_date', format(weekStart, 'yyyy-MM-dd'))
+          .lte('appointment_date', format(weekEnd, 'yyyy-MM-dd'));
+      } else if (filters.dateRange === 'custom') {
+        if (filters.startDate) {
+          query = query.gte('appointment_date', filters.startDate);
+        }
+        if (filters.endDate) {
+          query = query.lte('appointment_date', filters.endDate);
+        }
       }
 
       // Status filter

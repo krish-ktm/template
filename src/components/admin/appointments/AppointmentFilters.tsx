@@ -4,7 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 // date-fns utilities not used in this component
 
 interface FilterState {
-  dateRange: 'today' | 'tomorrow' | 'week' | 'all';
+  dateRange: 'today' | 'tomorrow' | 'week' | 'all' | 'custom';
+  startDate?: string;
+  endDate?: string;
   status: 'all' | 'pending' | 'completed' | 'cancelled';
   search: string;
   ageRange: 'all' | 'child' | 'adult' | 'senior';
@@ -87,6 +89,8 @@ export function AppointmentFilters({
   const clearFilters = () => {
     onFiltersChange({
       dateRange: 'today',
+      startDate: undefined,
+      endDate: undefined,
       status: 'all',
       search: '',
       ageRange: 'all',
@@ -144,6 +148,7 @@ export function AppointmentFilters({
               { key: 'today', label: 'Today' },
               { key: 'tomorrow', label: 'Tomorrow' },
               { key: 'week', label: 'This Week' },
+              { key: 'custom', label: 'Range' },
               { key: 'all', label: 'All' }
             ].map(({ key, label }) => (
               <button
@@ -292,6 +297,34 @@ export function AppointmentFilters({
                     </div>
                   </div>
 
+                  {/* Third Row - Date Range Picker when custom */}
+                  {filters.dateRange === 'custom' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          From
+                        </label>
+                        <input
+                          type="date"
+                          value={filters.startDate || ''}
+                          onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          To
+                        </label>
+                        <input
+                          type="date"
+                          value={filters.endDate || ''}
+                          onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Third Row - Results and Clear */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-gray-100">
                     <div className="text-sm text-gray-600">
@@ -352,6 +385,12 @@ export function AppointmentFilters({
             {(filters.sortBy !== 'date' || filters.sortOrder !== 'asc') && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
                 Sort: {filters.sortBy} ({filters.sortOrder})
+              </span>
+            )}
+            {filters.dateRange === 'custom' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                <Calendar className="h-3 w-3" />
+                {filters.startDate || '...'} - {filters.endDate || '...'}
               </span>
             )}
           </div>
