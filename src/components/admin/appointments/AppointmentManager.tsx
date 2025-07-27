@@ -20,6 +20,7 @@ interface FilterState {
   timeSlot: 'all' | 'morning' | 'evening';
   sortBy: 'date' | 'name' | 'created';
   sortOrder: 'asc' | 'desc';
+  resetPage?: boolean;
 }
 
 export function AppointmentManager() {
@@ -45,15 +46,31 @@ export function AppointmentManager() {
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Handle filter changes, including resetting page when needed
+  const handleFiltersChange = (newFilters: FilterState) => {
+    // Always reset to page 1 when filters change
+    setCurrentPage(1);
+    
+    // Remove the resetPage flag before setting filters if it exists
+    if (newFilters.resetPage) {
+      // Create a new object without the resetPage property
+      const filtersWithoutReset = { ...newFilters };
+      delete filtersWithoutReset.resetPage;
+      setFilters(filtersWithoutReset);
+    } else {
+      setFilters(newFilters);
+    }
+  };
+
   // Fetch whenever filters or page change
   useEffect(() => {
     loadAppointments();
   }, [filters, currentPage]);
 
-  // Reset to first page whenever filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
+  // This effect is no longer needed since we handle page reset in handleFiltersChange
+  // useEffect(() => {
+  //   setCurrentPage(1);
+  // }, [filters]);
 
   const loadAppointments = async () => {
     try {
@@ -230,6 +247,10 @@ export function AppointmentManager() {
   };
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  
+  // Calculate the range of appointments being shown
+  const startRange = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const endRange = Math.min(currentPage * PAGE_SIZE, totalCount);
 
   return (
     <div className="space-y-6 pt-12 sm:pt-0 mt-4 sm:mt-0 px-2 sm:px-0">
@@ -237,7 +258,9 @@ export function AppointmentManager() {
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Appointment Management</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Showing {appointments.length} of {totalCount} appointments
+            {totalCount > 0 ? 
+              `Showing ${startRange}-${endRange} of ${totalCount} appointments` : 
+              'No appointments found'}
           </p>
         </div>
         <button
@@ -255,7 +278,7 @@ export function AppointmentManager() {
 
       <AppointmentFilters
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={handleFiltersChange}
         totalCount={totalCount}
         filteredCount={totalCount}
       />

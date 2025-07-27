@@ -24,6 +24,7 @@ export function CustomDatePicker({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<Date | null>(null);
+  const [hoverDate, setHoverDate] = useState<Date | null>(null);
 
   const handleMonthChange = (newMonth: Date) => {
     setCurrentMonth(newMonth);
@@ -110,6 +111,7 @@ export function CustomDatePicker({
         
         onChange(selectedRange);
         setSelectionStart(null);
+        setHoverDate(null);
       } 
       // Start selecting a range
       else {
@@ -117,6 +119,16 @@ export function CustomDatePicker({
         setSelectionStart(day);
         onChange([day]); // Initially select just this day
       }
+    };
+
+    const handleMouseEnter = (day: Date) => {
+      if (isSelecting && selectionStart) {
+        setHoverDate(day);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setHoverDate(null);
     };
 
     const sortedSelected = [...selectedDates].sort((a,b)=>a.getTime()-b.getTime());
@@ -127,9 +139,21 @@ export function CustomDatePicker({
 
     const isRange = selectedDates.length > 1;
 
+    // Check if day is in the selected range
     const isInRange = (day: Date) => {
       if (!isRange) return false;
       return isAfter(day, firstSelected) && isBefore(day, lastSelected);
+    };
+
+    // Check if day is in the hover range during selection
+    const isInHoverRange = (day: Date) => {
+      if (!isSelecting || !selectionStart || !hoverDate) return false;
+      
+      const rangeStart = isBefore(selectionStart, hoverDate) ? selectionStart : hoverDate;
+      const rangeEnd = isBefore(selectionStart, hoverDate) ? hoverDate : selectionStart;
+      
+      return (isAfter(day, rangeStart) || isSameDay(day, rangeStart)) && 
+             (isBefore(day, rangeEnd) || isSameDay(day, rangeEnd));
     };
 
     const isDisabled = (day: Date) => {
@@ -143,27 +167,54 @@ export function CustomDatePicker({
       const isCurrentDay = isToday(day);
       const daySelected = isSelected(day);
       const dayInRange = isInRange(day);
+      const dayInHoverRange = isInHoverRange(day);
 
       const isRangeStart = isRange && isSameDay(day, firstSelected);
       const isRangeEnd = isRange && isSameDay(day, lastSelected);
+      const isHoverRangeStart = isSelecting && selectionStart && isSameDay(day, selectionStart);
+      const isHoverRangeEnd = isSelecting && hoverDate && isSameDay(day, hoverDate);
+      
       const singleSelected = daySelected && !isRange;
       const dayDisabled = isDisabled(day);
+      
+      // Determine border radius classes for range selection
+      let borderRadiusClass = 'rounded-md';
+      
+      if (isRangeStart) {
+        borderRadiusClass = 'rounded-l-md';
+      } else if (isRangeEnd) {
+        borderRadiusClass = 'rounded-r-md';
+      } else if (dayInRange) {
+        borderRadiusClass = '';
+      }
+      
+      if (isHoverRangeStart) {
+        borderRadiusClass = 'rounded-l-md';
+      } else if (isHoverRangeEnd) {
+        borderRadiusClass = 'rounded-r-md';
+      } else if (dayInHoverRange && !daySelected) {
+        borderRadiusClass = '';
+      }
+      
+      if (singleSelected) {
+        borderRadiusClass = 'rounded-md';
+      }
       
       return (
         <button
           key={`day-${index}`}
           type="button" // Prevent form submission
-          className={`relative h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center text-xs sm:text-sm ${
+          className={`relative h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center text-xs sm:text-sm ${borderRadiusClass} ${
             dayInRange ? 'bg-[#2B5C4B] text-white' : ''
           } ${daySelected ? 'bg-[#2B5C4B] text-white' : ''} 
-            ${!dayDisabled && 'cursor-pointer hover:bg-[#2B5C4B]/10 transition-colors'} 
+            ${dayInHoverRange && !daySelected ? 'bg-[#2B5C4B]/30 text-gray-800' : ''}
+            ${!dayDisabled && !daySelected && !dayInRange && !dayInHoverRange ? 'cursor-pointer hover:bg-[#2B5C4B]/10 transition-colors' : ''} 
+            ${(daySelected || dayInRange) ? 'hover:bg-[#2B5C4B] hover:text-white' : ''}
             ${dayDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-800'} 
-            ${isCurrentDay && !daySelected ? 'font-bold' : ''} 
-            ${isRangeStart ? 'rounded-l-md' : ''} 
-            ${isRangeEnd ? 'rounded-r-md' : ''} 
-            ${singleSelected ? 'rounded-md' : ''} 
-            ${!isRangeStart && !isRangeEnd && !singleSelected ? 'rounded-none' : ''}`}
+            ${isCurrentDay && !daySelected && !dayInHoverRange ? 'font-bold' : ''}`}
           onClick={() => !dayDisabled && handleDateClick(day)}
+          onMouseEnter={() => handleMouseEnter(day)}
+          onMouseLeave={handleMouseLeave}
           disabled={dayDisabled}
         >
           {format(day, 'd')}

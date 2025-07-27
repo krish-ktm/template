@@ -15,6 +15,7 @@ interface FilterState {
   timeSlot: 'all' | 'morning' | 'evening';
   sortBy: 'date' | 'name' | 'created';
   sortOrder: 'asc' | 'desc';
+  resetPage?: boolean; // New flag to reset pagination
 }
 
 interface AppointmentFiltersProps {
@@ -329,7 +330,7 @@ export function AppointmentFilters({
                   {/* Third Row - Results and Clear */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-gray-100">
                     <div className="text-sm text-gray-600">
-                      Showing <span className="font-semibold text-[#2B5C4B]">{filteredCount}</span> of <span className="font-semibold">{totalCount}</span> appointments
+                      {filteredCount > 0 ? `Found ${filteredCount} of ${totalCount} appointments` : 'No appointments found'}
                     </div>
                     {hasActiveFilters && (
                       <button
