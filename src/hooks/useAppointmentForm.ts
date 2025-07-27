@@ -204,8 +204,11 @@ export function useAppointmentForm() {
       setSuccess(true);
       setBookingDetails(appointment);
       resetForm();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to book appointment. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

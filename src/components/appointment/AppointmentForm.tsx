@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Phone, User, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Phone, User, Clock } from 'lucide-react';
 import { AppointmentForm as AppointmentFormType, TimeSlot, Patient } from '../../types';
 import { FormField } from './FormField';
 import { TimeSlotSelector } from './TimeSlotSelector';
 import { useTranslation } from '../../i18n/useTranslation';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
 import { format } from 'date-fns';
 import { utcToZonedTime } from 'date-fns-tz';
 import { useState, useEffect } from 'react';
@@ -21,6 +19,14 @@ interface AppointmentFormProps {
   success: boolean;
   loading: boolean;
   loadingSlots?: boolean;
+}
+
+interface Rule {
+  id: string;
+  title: Record<string, string>;
+  content: Record<string, string>;
+  is_active: boolean;
+  display_order: number;
 }
 
 const TIMEZONE = 'Asia/Kolkata';
@@ -40,9 +46,10 @@ export function AppointmentForm({
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   const [loadingPatientData, setLoadingPatientData] = useState(false);
   const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
+  const [searchCompleted, setSearchCompleted] = useState(false);
+  const [rules, setRules] = useState<Rule[]>([]);
   tomorrow.setDate(today.getDate() + 1);
 
-  const [rules, setRules] = useState<any[]>([]);
   const [showAllRules, setShowAllRules] = useState(false);
 
   useEffect(() => {
@@ -67,6 +74,8 @@ export function AppointmentForm({
   // Fetch patient data when phone number is entered
   useEffect(() => {
     const phoneNumber = form.phone.trim();
+    setSearchCompleted(false); // Reset search completed flag when phone number changes
+    
     if (phoneNumber.length === 10) {
       fetchPatientByPhone(phoneNumber);
     } else {
@@ -100,9 +109,17 @@ export function AppointmentForm({
         });
         
         toast.success('Patient information loaded');
+      } else {
+        // Clear current patient if no patient found with this phone number
+        setCurrentPatient(null);
       }
+      
+      // Set search completed flag after the search operation finishes
+      setSearchCompleted(true);
     } catch (error) {
       console.error('Error fetching patient data:', error);
+      setSearchCompleted(true); // Mark search as completed even if there's an error
+      setCurrentPatient(null);
     } finally {
       setLoadingPatientData(false);
     }
@@ -138,6 +155,11 @@ export function AppointmentForm({
 
   const displayedRules = showAllRules ? rules : rules.slice(0, 2);
 
+  // Helper function to determine if we should show the patient status message
+  const shouldShowPatientStatus = () => {
+    return searchCompleted && form.phone.length === 10 && !loadingPatientData;
+  };
+
   return (
     <div>
       {/* Appointment Rules */}
@@ -158,7 +180,7 @@ export function AppointmentForm({
               </button>
             </div>
           )}
-          {displayedRules.map((rule, index) => (
+          {displayedRules.map((rule: Rule, index) => (
             <motion.div
               key={rule.id}
               initial={{ opacity: 0, x: -20 }}
@@ -271,26 +293,9 @@ export function AppointmentForm({
                 </div>
                 <h3 className="font-medium text-gray-900 font-heading">{t.appointment.form.personalInfo}</h3>
               </div>
-              {currentPatient && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
-                  <div className="flex items-center gap-1.5 mb-1 font-medium">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span>Returning Patient</span>
-                  </div>
-                  <p className="text-xs text-green-700">
-                    Your information has been loaded from our records.
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  label={t.appointment.form.name}
-                  type="text"
-                  value={form.name}
-                  onChange={(value) => setForm({ ...form, name: value })}
-                  icon={User}
-                  disabled={loadingPatientData}
-                />
+              
+              {/* Phone input with explanation - moved to the top */}
+              <div className="mb-4">
                 <div className="relative">
                   <FormField
                     label={t.appointment.form.phone}
@@ -308,6 +313,49 @@ export function AppointmentForm({
                     </div>
                   )}
                 </div>
+                <p className="mt-1 text-xs text-gray-500 ml-1">
+                  {t.appointment.form.phoneInfo}
+                </p>
+              </div>
+              
+              {/* Patient status notification - Only shown after search is completed */}
+              {shouldShowPatientStatus() && (
+                <>
+                  {currentPatient ? (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
+                      <div className="flex items-center gap-1.5 mb-1 font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        <span>{t.appointment.form.returningPatient}</span>
+                      </div>
+                      <p className="text-xs text-green-700">
+                        {t.appointment.form.returningPatientInfo}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+                      <div className="flex items-center gap-1.5 mb-1 font-medium">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        <span>{t.appointment.form.newPatient}</span>
+                      </div>
+                      <p className="text-xs text-blue-700">
+                        {t.appointment.form.newPatientInfo}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* Other personal info fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  label={t.appointment.form.name}
+                  type="text"
+                  value={form.name}
+                  onChange={(value) => setForm({ ...form, name: value })}
+                  icon={User}
+                  disabled={loadingPatientData}
+                  required
+                />
                 <FormField
                   label={t.appointment.form.age}
                   type="number"
@@ -317,25 +365,30 @@ export function AppointmentForm({
                   min="0"
                   max="120"
                   disabled={loadingPatientData}
+                  required
                 />
-                <FormField
-                  label={t.appointment.form.city}
-                  type="text"
-                  value={form.city}
-                  onChange={(value) => setForm({ ...form, city: value })}
-                  icon={MapPin}
-                  disabled={loadingPatientData}
-                />
+                <div className="sm:col-span-2">
+                  <FormField
+                    label={t.appointment.form.city}
+                    type="text"
+                    value={form.city}
+                    onChange={(value) => setForm({ ...form, city: value })}
+                    icon={MapPin}
+                    disabled={loadingPatientData}
+                    required
+                  />
+                </div>
               </div>
             </div>
 
+            {/* Booking button */}
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
-              disabled={loading || !form.timeSlot || loadingPatientData}
+              disabled={loading || !form.timeSlot || loadingPatientData || !form.name || !form.age || !form.city || form.phone.length !== 10}
               className={`w-full py-4 px-6 bg-[#2B5C4B] text-white rounded-xl font-medium hover:bg-[#234539] transition-all duration-200 ${
-                (loading || !form.timeSlot || loadingPatientData) ? 'opacity-70 cursor-not-allowed' : ''
+                (loading || !form.timeSlot || loadingPatientData || !form.name || !form.age || !form.city || form.phone.length !== 10) ? 'opacity-70 cursor-not-allowed' : ''
               } font-sans`}
             >
               {loading ? (

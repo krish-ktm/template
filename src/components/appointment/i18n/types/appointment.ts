@@ -7,6 +7,7 @@ export interface AppointmentTranslations {
     subtitle: string;
     name: string;
     phone: string;
+    phoneInfo: string;
     age: string;
     city: string;
     date: string;
@@ -24,6 +25,10 @@ export interface AppointmentTranslations {
     showingSlots: string;
     slotsLeft: string;
     loadingSlots: string;
+    returningPatient: string;
+    returningPatientInfo: string;
+    newPatient: string;
+    newPatientInfo: string;
     days: {
       sunday: string;
       monday: string;
