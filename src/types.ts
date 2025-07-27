@@ -20,6 +20,20 @@ export interface WorkingHour {
   updated_at: string;
 }
 
+export interface Patient {
+  id: string;
+  phone_number: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  age: number | null;
+  gender: string | null;
+  address: string | null;
+  medical_history: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AppointmentForm {
   name: string;
   phone: string;
@@ -39,6 +53,7 @@ export interface BookingDetails {
   appointment_time: string;
   status: string;
   created_at: string;
+  patient_id?: string;
 }
 
 export interface User {

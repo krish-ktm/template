@@ -9,6 +9,7 @@ import { MessageManager } from './components/admin/MessageManager';
 import { ContactMessagesManager } from './components/admin/ContactMessagesManager';
 import { AppointmentManager } from './components/admin/appointments/AppointmentManager';
 import { AppointmentSettings } from './components/admin/appointments/AppointmentSettings';
+import { PatientManager } from './components/admin/patients/PatientManager';
 import { MRAppointmentManager } from './components/admin/MRAppointmentManager';
 import { MRAppointmentManagement } from './components/admin/mr-appointment/MRAppointmentManagement';
 import { UsersManager } from './components/admin/UsersManager';
@@ -81,6 +82,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="appointments" element={<AppointmentManager />} />
+              <Route path="patients" element={<PatientManager />} />
               <Route path="appointment-settings" element={<AppointmentSettings />} />
               <Route path="mr-appointments" element={<MRAppointmentManager />} />
               <Route path="mr-settings" element={<MRAppointmentManagement />} />

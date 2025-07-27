@@ -148,6 +148,7 @@ export function AdminLayout() {
       name: 'Appointments',
       items: [
         { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
+        { name: 'Patients', href: '/admin/patients', icon: Users },
         ...(currentUser?.role === 'superadmin' ? [
           { name: 'Appointment Settings', href: '/admin/appointment-settings', icon: Settings }
         ] : [])

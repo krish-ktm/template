@@ -127,7 +127,35 @@ CREATE TABLE public.notices (
   CONSTRAINT notices_created_by_fkey FOREIGN KEY (created_by) REFERENCES users (id)
 ) TABLESPACE pg_default;
 
--- Create `appointments` table, which does not reference any other table directly but should be created early.
+-- Create `patients` table before appointments since it will be referenced
+CREATE TABLE public.patients (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    phone_number VARCHAR(10) NOT NULL UNIQUE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100),
+    email VARCHAR(255),
+    age INTEGER,
+    gender VARCHAR(20),
+    address TEXT,
+    medical_history TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT valid_patient_age CHECK (
+        (age IS NULL) OR (age >= 0 AND age <= 120)
+    ),
+    CONSTRAINT valid_gender CHECK (
+        gender IS NULL OR 
+        gender = ANY (ARRAY['male', 'female', 'other'])
+    ),
+    CONSTRAINT valid_phone CHECK (
+        phone_number ~ '^[0-9]{10}$'
+    )
+);
+
+-- Create an index on phone_number for faster lookups
+CREATE INDEX IF NOT EXISTS idx_patients_phone_number ON patients(phone_number);
+
+-- Create `appointments` table with patient reference
 CREATE TABLE public.appointments (
   id UUID NOT NULL DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -138,11 +166,18 @@ CREATE TABLE public.appointments (
   appointment_time TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NULL DEFAULT now(),
   status TEXT NULL DEFAULT 'pending'::TEXT,
+  patient_id UUID REFERENCES patients(id),
   CONSTRAINT appointments_pkey PRIMARY KEY (id),
   CONSTRAINT valid_age CHECK (
     (age >= 0) AND (age <= 120)
+  ),
+  CONSTRAINT valid_status CHECK (
+    status = ANY (ARRAY['pending'::TEXT, 'completed'::TEXT, 'cancelled'::TEXT])
   )
 ) TABLESPACE pg_default;
+
+-- Create index on patient_id for better join performance
+CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments(patient_id);
 
 -- Create `working_hours` table.
 CREATE TABLE public.working_hours (
@@ -214,6 +249,12 @@ CREATE TRIGGER update_working_hours_updated_at
 BEFORE UPDATE ON working_hours
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for patients table to update updated_at
+CREATE TRIGGER update_patients_updated_at
+    BEFORE UPDATE ON patients
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert initial data
 INSERT INTO users (email, password, role, name, status)

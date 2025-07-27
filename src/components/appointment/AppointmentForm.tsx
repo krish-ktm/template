@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, Phone, User, Clock, AlertCircle } from 'lucide-react';
-import { AppointmentForm as AppointmentFormType, TimeSlot } from '../../types';
+import { AppointmentForm as AppointmentFormType, TimeSlot, Patient } from '../../types';
 import { FormField } from './FormField';
 import { TimeSlotSelector } from './TimeSlotSelector';
 import { useTranslation } from '../../i18n/useTranslation';
@@ -11,6 +11,7 @@ import { utcToZonedTime } from 'date-fns-tz';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatMarkdown } from '../../utils/markdown';
+import { toast } from 'react-hot-toast';
 
 interface AppointmentFormProps {
   form: AppointmentFormType;
@@ -37,6 +38,8 @@ export function AppointmentForm({
   const today = new Date();
   const tomorrow = new Date();
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
+  const [loadingPatientData, setLoadingPatientData] = useState(false);
+  const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
   tomorrow.setDate(today.getDate() + 1);
 
   const [rules, setRules] = useState<any[]>([]);
@@ -61,6 +64,50 @@ export function AppointmentForm({
     }
   };
 
+  // Fetch patient data when phone number is entered
+  useEffect(() => {
+    const phoneNumber = form.phone.trim();
+    if (phoneNumber.length === 10) {
+      fetchPatientByPhone(phoneNumber);
+    } else {
+      setCurrentPatient(null);
+    }
+  }, [form.phone]);
+
+  const fetchPatientByPhone = async (phoneNumber: string) => {
+    try {
+      setLoadingPatientData(true);
+      
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('phone_number', phoneNumber)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "no rows returned" error, which is expected if patient doesn't exist
+        console.error('Error fetching patient:', error);
+      }
+      
+      if (data) {
+        setCurrentPatient(data);
+        // Auto-fill form with patient data
+        setForm({
+          ...form,
+          name: `${data.first_name} ${data.last_name || ''}`.trim(),
+          age: data.age ? String(data.age) : '',
+          city: data.address ? data.address.split(',').pop()?.trim() || '' : ''
+        });
+        
+        toast.success('Patient information loaded');
+      }
+    } catch (error) {
+      console.error('Error fetching patient data:', error);
+    } finally {
+      setLoadingPatientData(false);
+    }
+  };
+
   const handleDateChange = (date: Date | null) => {
     if (date) {
       const istDate = utcToZonedTime(date, TIMEZONE);
@@ -79,6 +126,14 @@ export function AppointmentForm({
     const day = format(date, 'd');
     const year = format(date, 'yyyy');
     return `${dayName}, ${monthName} ${day}, ${year}`;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Only allow digits
+    const digitsOnly = value.replace(/\D/g, '');
+    // Limit to 10 digits
+    const limitedValue = digitsOnly.substring(0, 10);
+    setForm({ ...form, phone: limitedValue });
   };
 
   const displayedRules = showAllRules ? rules : rules.slice(0, 2);
@@ -216,6 +271,17 @@ export function AppointmentForm({
                 </div>
                 <h3 className="font-medium text-gray-900 font-heading">{t.appointment.form.personalInfo}</h3>
               </div>
+              {currentPatient && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
+                  <div className="flex items-center gap-1.5 mb-1 font-medium">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span>Returning Patient</span>
+                  </div>
+                  <p className="text-xs text-green-700">
+                    Your information has been loaded from our records.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   label={t.appointment.form.name}
@@ -223,14 +289,25 @@ export function AppointmentForm({
                   value={form.name}
                   onChange={(value) => setForm({ ...form, name: value })}
                   icon={User}
+                  disabled={loadingPatientData}
                 />
-                <FormField
-                  label={t.appointment.form.phone}
-                  type="tel"
-                  value={form.phone}
-                  onChange={(value) => setForm({ ...form, phone: value })}
-                  icon={Phone}
-                />
+                <div className="relative">
+                  <FormField
+                    label={t.appointment.form.phone}
+                    type="tel"
+                    value={form.phone}
+                    onChange={handlePhoneChange}
+                    icon={Phone}
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    title="Please enter a 10-digit phone number"
+                  />
+                  {loadingPatientData && (
+                    <div className="absolute right-3 top-9">
+                      <div className="w-4 h-4 border-2 border-[#2B5C4B]/30 border-t-[#2B5C4B] rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
                 <FormField
                   label={t.appointment.form.age}
                   type="number"
@@ -239,6 +316,7 @@ export function AppointmentForm({
                   icon={User}
                   min="0"
                   max="120"
+                  disabled={loadingPatientData}
                 />
                 <FormField
                   label={t.appointment.form.city}
@@ -246,6 +324,7 @@ export function AppointmentForm({
                   value={form.city}
                   onChange={(value) => setForm({ ...form, city: value })}
                   icon={MapPin}
+                  disabled={loadingPatientData}
                 />
               </div>
             </div>
@@ -254,9 +333,9 @@ export function AppointmentForm({
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
-              disabled={loading || !form.timeSlot}
+              disabled={loading || !form.timeSlot || loadingPatientData}
               className={`w-full py-4 px-6 bg-[#2B5C4B] text-white rounded-xl font-medium hover:bg-[#234539] transition-all duration-200 ${
-                (loading || !form.timeSlot) ? 'opacity-70 cursor-not-allowed' : ''
+                (loading || !form.timeSlot || loadingPatientData) ? 'opacity-70 cursor-not-allowed' : ''
               } font-sans`}
             >
               {loading ? (
