@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Phone, User as UserIcon, MoreVertical, Check, X, Trash2, Eye } from 'lucide-react';
 import { BookingDetails } from '../../../types';
 import { format } from 'date-fns';
@@ -24,6 +24,30 @@ export function AppointmentsTable({
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [viewingAppointment, setViewingAppointment] = useState<BookingDetails | null>(null);
+
+  // Custom handler for status updates that also updates the modal state
+  const handleStatusUpdate = (id: string, status: 'completed' | 'cancelled') => {
+    // Call the parent component's status update function
+    onStatusUpdate(id, status);
+    
+    // Update the viewingAppointment state if it's currently being viewed
+    if (viewingAppointment && viewingAppointment.id === id) {
+      setViewingAppointment({
+        ...viewingAppointment,
+        status
+      });
+    }
+  };
+
+  // Custom handler for delete that also closes the modal
+  const handleDelete = (id: string) => {
+    onDelete(id);
+    
+    // Close the modal if the deleted appointment was being viewed
+    if (viewingAppointment && viewingAppointment.id === id) {
+      setViewingAppointment(null);
+    }
+  };
 
   const formatTime = (timeStr: string) => {
     return timeStr.replace(/^(\d{1,2}):(\d{2})/, (_, hour, minute) => {
@@ -74,6 +98,17 @@ export function AppointmentsTable({
     
     setOpenActionMenu(openActionMenu === appointmentId ? null : appointmentId);
   };
+
+  // Update viewingAppointment if it exists in the appointments array
+  // This ensures the modal shows the latest data when appointments are updated
+  useEffect(() => {
+    if (viewingAppointment) {
+      const updatedAppointment = appointments.find(a => a.id === viewingAppointment.id);
+      if (updatedAppointment) {
+        setViewingAppointment(updatedAppointment);
+      }
+    }
+  }, [appointments, viewingAppointment]);
 
   if (appointments.length === 0) {
     return (
@@ -203,7 +238,7 @@ export function AppointmentsTable({
                               <>
                                 <button
                                   onClick={() => {
-                                    onStatusUpdate(appointment.id, 'completed');
+                                    handleStatusUpdate(appointment.id, 'completed');
                                     setOpenActionMenu(null);
                                   }}
                                   className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2"
@@ -213,7 +248,7 @@ export function AppointmentsTable({
                                 </button>
                                 <button
                                   onClick={() => {
-                                    onStatusUpdate(appointment.id, 'cancelled');
+                                    handleStatusUpdate(appointment.id, 'cancelled');
                                     setOpenActionMenu(null);
                                   }}
                                   className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-2"
@@ -225,7 +260,7 @@ export function AppointmentsTable({
                             )}
                             <button
                               onClick={() => {
-                                onDelete(appointment.id);
+                                handleDelete(appointment.id);
                                 setOpenActionMenu(null);
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-2"
@@ -303,7 +338,7 @@ export function AppointmentsTable({
                 {appointment.status === 'pending' && (
                   <>
                     <button
-                      onClick={() => onStatusUpdate(appointment.id, 'completed')}
+                      onClick={() => handleStatusUpdate(appointment.id, 'completed')}
                       disabled={actionLoading === appointment.id}
                       className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                       title="Mark Complete"
@@ -315,7 +350,7 @@ export function AppointmentsTable({
                       )}
                     </button>
                     <button
-                      onClick={() => onStatusUpdate(appointment.id, 'cancelled')}
+                      onClick={() => handleStatusUpdate(appointment.id, 'cancelled')}
                       disabled={actionLoading === appointment.id}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                       title="Cancel"
@@ -325,7 +360,7 @@ export function AppointmentsTable({
                   </>
                 )}
                 <button
-                  onClick={() => onDelete(appointment.id)}
+                  onClick={() => handleDelete(appointment.id)}
                   disabled={actionLoading === appointment.id}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                   title="Delete"
@@ -344,8 +379,8 @@ export function AppointmentsTable({
           <AppointmentDetailsModal
             appointment={viewingAppointment}
             onClose={() => setViewingAppointment(null)}
-            onStatusUpdate={onStatusUpdate}
-            onDelete={onDelete}
+            onStatusUpdate={handleStatusUpdate}
+            onDelete={handleDelete}
             actionLoading={actionLoading}
           />
         )}
