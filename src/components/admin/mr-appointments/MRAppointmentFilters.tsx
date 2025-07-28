@@ -1,0 +1,373 @@
+import { Search, Calendar, Filter, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useEffect } from 'react';
+import DateRangePickerPopover from '../appointments/DateRangePickerPopover';
+
+interface FilterState {
+  dateRange: 'today' | 'tomorrow' | 'week' | 'all' | 'custom';
+  startDate?: string;
+  endDate?: string;
+  search: string;
+  company: string;
+  division: string;
+  sortBy: 'date' | 'name' | 'created' | 'company';
+  sortOrder: 'asc' | 'desc';
+  resetPage?: boolean;
+}
+
+interface MRAppointmentFiltersProps {
+  filters: FilterState;
+  onFiltersChange: (filters: FilterState) => void;
+  totalCount: number;
+  filteredCount: number;
+}
+
+export function MRAppointmentFilters({ 
+  filters, 
+  onFiltersChange, 
+  totalCount, 
+  filteredCount 
+}: MRAppointmentFiltersProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Immediate update for non-search filters
+  const handleFilterChange = (key: keyof FilterState, value: string) => {
+    if (key === 'search') {
+      // Search is handled with debouncing below
+      setSearchInput(value);
+    } else if (key === 'company') {
+      // Company search debounced similarly
+      setCompanyInput(value);
+    } else if (key === 'division') {
+      // Division search debounced similarly
+      setDivisionInput(value);
+    } else if (key === 'startDate' || key === 'endDate') {
+      // Setting a custom range automatically enables custom mode
+      onFiltersChange({
+        ...filters,
+        [key]: value,
+        dateRange: 'custom'
+      });
+    } else {
+      onFiltersChange({
+        ...filters,
+        [key]: value
+      });
+    }
+  };
+
+  const handleDateRangeSelect = (range: { startDate: string; endDate: string }) => {
+    onFiltersChange({
+      ...filters,
+      dateRange: 'custom',
+      startDate: range.startDate,
+      endDate: range.endDate
+    });
+  };
+
+  // ---- Search with debounce ----
+  const [searchInput, setSearchInput] = useState(filters.search);
+
+  // keep local input in sync when outer filter resets (e.g., clear filters)
+  useEffect(() => {
+    setSearchInput(filters.search);
+  }, [filters.search]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        onFiltersChange({
+          ...filters,
+          search: searchInput
+        });
+      }
+    }, 400); // 400-ms debounce
+    return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  // ---- Company search with debounce ----
+  const [companyInput, setCompanyInput] = useState(filters.company);
+
+  useEffect(() => {
+    setCompanyInput(filters.company);
+  }, [filters.company]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (companyInput !== filters.company) {
+        onFiltersChange({
+          ...filters,
+          company: companyInput
+        });
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [companyInput]);
+
+  // ---- Division search with debounce ----
+  const [divisionInput, setDivisionInput] = useState(filters.division);
+
+  useEffect(() => {
+    setDivisionInput(filters.division);
+  }, [filters.division]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (divisionInput !== filters.division) {
+        onFiltersChange({
+          ...filters,
+          division: divisionInput
+        });
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [divisionInput]);
+
+  const clearFilters = () => {
+    onFiltersChange({
+      dateRange: 'today',
+      startDate: undefined,
+      endDate: undefined,
+      search: '',
+      company: '',
+      division: '',
+      sortBy: 'date',
+      sortOrder: 'asc'
+    });
+    setShowAdvanced(false);
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return filters.search !== '' || 
+           filters.dateRange !== 'today' ||
+           filters.company !== '' ||
+           filters.division !== '' ||
+           filters.sortBy !== 'date' ||
+           filters.sortOrder !== 'asc' ||
+           filters.startDate !== undefined ||
+           filters.endDate !== undefined;
+  }, [filters]);
+
+  const getDateRangeLabel = (range: string) => {
+    switch (range) {
+      case 'today': return 'Today';
+      case 'tomorrow': return 'Tomorrow';
+      case 'week': return 'This Week';
+      case 'all': return 'All Dates';
+      case 'custom': return 'Date Range';
+      default: return range;
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+      <div className="flex flex-col gap-4">
+        {/* Search and Quick Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          {/* Search */}
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by name, contact number, or ID..."
+              value={searchInput}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+            />
+          </div>
+
+          {/* Date Range Quick Filters */}
+          <div className="flex gap-2">
+            {[
+              { key: 'today', label: 'Today' },
+              { key: 'tomorrow', label: 'Tomorrow' },
+              { key: 'week', label: 'This Week' },
+              { key: 'all', label: 'All' }
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => handleFilterChange('dateRange', key)}
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  filters.dateRange === key
+                    ? 'bg-[#2B5C4B] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Advanced Filters Toggle */}
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              showAdvanced
+                ? 'bg-[#2B5C4B]/10 text-[#2B5C4B]'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filters</span>
+            {hasActiveFilters && !showAdvanced && (
+              <span className="bg-[#2B5C4B] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                !
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Advanced Filters */}
+        <AnimatePresence>
+          {showAdvanced && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-visible"
+            >
+              <div className="pt-4 border-t border-gray-200">
+                <div className="space-y-4">
+                  {/* First Row - Company and Division */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Company Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Company
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Filter by company name..."
+                        value={companyInput}
+                        onChange={(e) => handleFilterChange('company', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      />
+                    </div>
+
+                    {/* Division Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Division
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Filter by division name..."
+                        value={divisionInput}
+                        onChange={(e) => handleFilterChange('division', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Second Row - Sort By and Sort Order */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Sort By */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sort By
+                      </label>
+                      <select
+                        value={filters.sortBy}
+                        onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="date">Appointment Date</option>
+                        <option value="name">MR Name</option>
+                        <option value="company">Company Name</option>
+                        <option value="created">Booking Date</option>
+                      </select>
+                    </div>
+
+                    {/* Sort Order */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Order
+                      </label>
+                      <select
+                        value={filters.sortOrder}
+                        onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2B5C4B]/20 focus:border-[#2B5C4B] text-sm"
+                      >
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Date Range Picker */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                    <DateRangePickerPopover
+                      startDate={filters.startDate}
+                      endDate={filters.endDate}
+                      onSelect={handleDateRangeSelect}
+                    />
+                  </div>
+
+                  {/* Third Row - Results and Clear */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-gray-100">
+                    <div className="text-sm text-gray-600">
+                      {filteredCount > 0 ? `Found ${filteredCount} of ${totalCount} MR appointments` : 'No MR appointments found'}
+                    </div>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={clearFilters}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                        Clear All Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active Filters Summary */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+            <span className="text-sm text-gray-500">Active filters:</span>
+            {filters.dateRange !== 'today' && filters.dateRange !== 'custom' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                <Calendar className="h-3 w-3" />
+                {getDateRangeLabel(filters.dateRange)}
+              </span>
+            )}
+            {filters.company && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Company: {filters.company}
+              </span>
+            )}
+            {filters.division && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Division: {filters.division}
+              </span>
+            )}
+            {filters.search && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                <Search className="h-3 w-3" />
+                "{filters.search}"
+              </span>
+            )}
+            {(filters.sortBy !== 'date' || filters.sortOrder !== 'asc') && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                Sort: {filters.sortBy} ({filters.sortOrder})
+              </span>
+            )}
+            {(filters.startDate || filters.endDate) && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#2B5C4B]/10 text-[#2B5C4B] rounded-md text-xs">
+                <Calendar className="h-3 w-3" />
+                {filters.startDate || '...'} - {filters.endDate || '...'}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+} 

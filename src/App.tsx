@@ -10,7 +10,7 @@ import { ContactMessagesManager } from './components/admin/ContactMessagesManage
 import { AppointmentManager } from './components/admin/appointments/AppointmentManager';
 import { AppointmentSettings } from './components/admin/appointments/AppointmentSettings';
 import { PatientManager } from './components/admin/patients/PatientManager';
-import { MRAppointmentManager } from './components/admin/MRAppointmentManager';
+import { MRAppointmentManager } from './components/admin/mr-appointments/MRAppointmentManager';
 import { MRAppointmentManagement } from './components/admin/mr-appointment/MRAppointmentManagement';
 import { UsersManager } from './components/admin/UsersManager';
 import { ClinicClosurePage } from './components/admin/ClinicClosurePage';

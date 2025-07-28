@@ -131,7 +131,8 @@ export function AppointmentManager() {
 
       // City filter
       if (filters.city) {
-        query = query.ilike('city', `%${filters.city}%`);
+        const encodedTerm = encodeURIComponent(`*${filters.city}*`);
+        query = query.ilike('city', `%${encodedTerm}%`);
       }
 
       // Time slot filter (simple AM/PM approximation)
@@ -145,18 +146,18 @@ export function AppointmentManager() {
       if (filters.search) {
         const term = filters.search.trim();
         const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(term);
-        const safeTerm = term.replace(/,/g, '\\,');
+        const encodedTerm = encodeURIComponent(`*${term}*`);
         const orFilters = [
-          `name.ilike.*${safeTerm}*`,
-          `city.ilike.*${safeTerm}*`,
-          `phone.ilike.*${safeTerm}*`
+          `name.ilike.${encodedTerm}`,
+          `city.ilike.${encodedTerm}`,
+          `phone.ilike.${encodedTerm}`
         ];
-        // note: commas are escaped to avoid breaking OR filter syntax
         if (isUuid) {
-          orFilters.push(`id.eq.${safeTerm}`);
+          orFilters.push(`id.eq.${term}`);
         }
         query = query.or(orFilters.join(','));
       }
+      
 
       // Sorting
       switch (filters.sortBy) {
