@@ -14,6 +14,7 @@ import { MRAppointmentManager } from './components/admin/mr-appointments/MRAppoi
 import { MRAppointmentManagement } from './components/admin/mr-appointment/MRAppointmentManagement';
 import { UsersManager } from './components/admin/UsersManager';
 import { ClinicClosurePage } from './components/admin/ClinicClosurePage';
+import { AnalyticsDashboard } from './components/admin/analytics/AnalyticsDashboard';
 import { LandingPage } from './components/LandingPage';
 import { AboutPage } from './components/AboutPage';
 import { GalleryPage } from './components/GalleryPage';
@@ -81,6 +82,7 @@ function App() {
             <Route path="/appointment" element={<AppointmentPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="analytics" element={<AnalyticsDashboard />} />
               <Route path="appointments" element={<AppointmentManager />} />
               <Route path="patients" element={<PatientManager />} />
               <Route path="appointment-settings" element={<AppointmentSettings />} />

@@ -17,7 +17,8 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
-  MessageSquare
+  MessageSquare,
+  BarChart
 } from 'lucide-react';
 import { checkReceptionistAccess } from '../../lib/auth';
 
@@ -140,7 +141,10 @@ export function AdminLayout() {
       {
         name: 'General',
         items: [
-          { name: 'Dashboard', href: '/admin', icon: LayoutDashboard }
+          { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+          ...(currentUser?.role === 'superadmin' ? [
+            { name: 'Analytics', href: '/admin/analytics', icon: BarChart }
+          ] : [])
         ]
       }
     ]),
