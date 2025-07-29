@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Phone, User, Clock } from 'lucide-react';
+import { MapPin, Phone, User, Clock } from 'lucide-react';
 import { AppointmentForm as AppointmentFormType, TimeSlot, Patient } from '../../types';
 import { FormField } from './FormField';
 import { TimeSlotSelector } from './TimeSlotSelector';
+import { DateSelector } from './DateSelector';
 import { useTranslation } from '../../i18n/useTranslation';
+import { useBookingSettings } from '../../hooks/useBookingSettings';
 import { format } from 'date-fns';
 import { utcToZonedTime } from 'date-fns-tz';
 import { useState, useEffect } from 'react';
@@ -49,6 +51,7 @@ export function AppointmentForm({
   const [searchCompleted, setSearchCompleted] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
   tomorrow.setDate(today.getDate() + 1);
+  const { settings: bookingSettings, loading: settingsLoading } = useBookingSettings();
 
   const [showAllRules, setShowAllRules] = useState(false);
 
@@ -222,44 +225,26 @@ export function AppointmentForm({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Date and Time Selection */}
           <div className="space-y-6">
-            <div className="bg-white p-4 rounded-xl border border-gray-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-[#2B5C4B]/10 rounded-lg">
-                  <Calendar className="w-5 h-5 text-[#2B5C4B]" />
+            {!settingsLoading && bookingSettings && (
+              <DateSelector
+                selectedDate={form.date}
+                onDateChange={handleDateChange}
+                dateOptions={bookingSettings.dateSelectionOptions}
+                restrictions={bookingSettings.bookingRestrictions}
+              />
+            )}
+            
+            {settingsLoading && (
+              <div className="bg-white p-4 rounded-xl border border-gray-200">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
+                  </div>
                 </div>
-                <h3 className="font-medium text-gray-900 font-heading">{t.appointment.form.date}</h3>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[today, tomorrow].map((date) => {
-                  const istDate = utcToZonedTime(date, TIMEZONE);
-                  const dateStr = format(istDate, 'yyyy-MM-dd');
-                  const dayName = t.appointment.form.days[format(istDate, 'EEEE').toLowerCase() as keyof typeof t.appointment.form.days];
-                  const monthName = t.appointment.form.months[format(istDate, 'MMMM').toLowerCase() as keyof typeof t.appointment.form.months];
-                  const day = format(istDate, 'd');
-                  return (
-                    <motion.button
-                      key={dateStr}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      type="button"
-                      onClick={() => handleDateChange(date)}
-                      className={`p-4 rounded-xl text-center transition-all ${
-                        form.date === dateStr
-                          ? 'bg-[#2B5C4B] text-white shadow-lg shadow-[#2B5C4B]/10'
-                          : 'bg-white border border-gray-200 text-gray-700 hover:border-[#2B5C4B]/30 hover:bg-[#2B5C4B]/5'
-                      }`}
-                    >
-                      <div className="text-sm font-medium mb-1 font-sans">
-                        {dayName}
-                      </div>
-                      <div className={`text-xs ${form.date === dateStr ? 'text-white/90' : 'text-gray-500'} font-sans`}>
-                        {`${monthName} ${day}`}
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             <div className="bg-white p-4 rounded-xl border border-gray-200">
               <div className="flex items-center gap-3 mb-4">

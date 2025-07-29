@@ -12,6 +12,7 @@ import { AppointmentSettings } from './components/admin/appointments/Appointment
 import { PatientManager } from './components/admin/patients/PatientManager';
 import { MRAppointmentManager } from './components/admin/mr-appointments/MRAppointmentManager';
 import { MRAppointmentManagement } from './components/admin/mr-appointment/MRAppointmentManagement';
+import { BookingSettingsManager } from './components/admin/appointments/BookingSettingsManager';
 import { UsersManager } from './components/admin/UsersManager';
 import { ClinicClosurePage } from './components/admin/ClinicClosurePage';
 import { AnalyticsDashboard } from './components/admin/analytics/AnalyticsDashboard';
@@ -86,6 +87,7 @@ function App() {
               <Route path="appointments" element={<AppointmentManager />} />
               <Route path="patients" element={<PatientManager />} />
               <Route path="appointment-settings" element={<AppointmentSettings />} />
+              <Route path="booking-settings" element={<BookingSettingsManager />} />
               <Route path="mr-appointments" element={<MRAppointmentManager />} />
               <Route path="mr-settings" element={<MRAppointmentManagement />} />
               <Route path="notices" element={<NoticeManager />} />
