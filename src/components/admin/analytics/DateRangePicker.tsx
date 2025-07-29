@@ -16,6 +16,7 @@ interface Range {
 interface DateRangePickerProps {
   dateRange: Range;
   onChange: (range: Range) => void;
+  className?: string;
 }
 
 const QUICK_RANGES: { label: string; getRange: () => { from: Date; to: Date } }[] = [
@@ -56,7 +57,7 @@ const QUICK_RANGES: { label: string; getRange: () => { from: Date; to: Date } }[
   },
 ];
 
-export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
+export function DateRangePicker({ dateRange, onChange, className }: DateRangePickerProps) {
   const [range, setRange] = React.useState<DateRange | undefined>({
     from: dateRange.startDate,
     to: dateRange.endDate,
@@ -83,68 +84,76 @@ export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
   };
 
   return (
-    <div className="grid gap-2">
+    <div className={cn("grid gap-2", className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             className={cn(
-              "w-[280px] justify-start text-left font-medium border-gray-300 hover:border-[#2B5C4B]",
+              "w-[280px] justify-start text-left font-normal transition-all duration-200",
+              "bg-white border-gray-200 hover:border-[#2B5C4B] hover:bg-gray-50/50",
+              "focus:ring-2 focus:ring-[#2B5C4B] focus:ring-opacity-20",
               !(range && range.from && range.to) && "text-gray-500"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4 text-[#2B5C4B]" />
             {range?.from ? (
               range.to ? (
                 <>
-                  {format(range.from, "LLL dd, y")} - {format(range.to, "LLL dd, y")}
+                  <span className="font-medium">{format(range.from, "MMM d, yyyy")}</span>
+                  <span className="mx-2 text-gray-400">to</span>
+                  <span className="font-medium">{format(range.to, "MMM d, yyyy")}</span>
                 </>
               ) : (
-                format(range.from, "LLL dd, y")
+                format(range.from, "MMM d, yyyy")
               )
             ) : (
-              <span>Pick a date</span>
+              <span>Select date range</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-4 w-auto" align="start">
-          <div className="flex flex-col gap-4">
-            {/* Quick ranges */}
-            <div className="flex flex-wrap gap-2">
-              {QUICK_RANGES.map((qr) => {
-                const { from, to } = qr.getRange();
-                const isActive =
-                  range?.from?.toDateString() === from.toDateString() &&
-                  range?.to?.toDateString() === to.toDateString();
+        <PopoverContent 
+          className="w-auto p-0 bg-white rounded-lg shadow-lg border border-gray-200" 
+          align="start"
+        >
+          <div className="flex flex-col gap-4 p-4">
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm text-gray-600">Quick select</h4>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_RANGES.map((qr) => {
+                  const { from, to } = qr.getRange();
+                  const isActive =
+                    range?.from?.toDateString() === from.toDateString() &&
+                    range?.to?.toDateString() === to.toDateString();
 
-                return (
-                  <Button
-                    key={qr.label}
-                    className={cn(
-                      "px-3 py-1 text-xs rounded-md border",
-                      isActive
-                        ? "bg-[#2B5C4B] text-white border-[#2B5C4B]"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-                    )}
-                    onClick={() => {
-                      applyRange(from, to);
-                    }}
-                  >
-                    {qr.label}
-                  </Button>
-                );
-              })}
+                  return (
+                    <Button
+                      key={qr.label}
+                      className={cn(
+                        "px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200",
+                        isActive
+                          ? "bg-[#2B5C4B] text-white shadow-sm shadow-[#2B5C4B]/20"
+                          : "bg-gray-50 text-gray-700 hover:bg-[#2B5C4B]/10 hover:text-[#2B5C4B]"
+                      )}
+                      onClick={() => applyRange(from, to)}
+                    >
+                      {qr.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Calendar */}
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={range?.from}
-              selected={range}
-              onSelect={handleSelect}
-              numberOfMonths={2}
-              className="border rounded-md"
-            />
+            <div className="rounded-lg border border-gray-100 p-3 shadow-sm">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={range?.from}
+                selected={range}
+                onSelect={handleSelect}
+                numberOfMonths={2}
+                className="[&_.rdp-day]:rounded-full [&_.rdp-day_focus]:ring-[#2B5C4B]/20"
+              />
+            </div>
           </div>
         </PopoverContent>
       </Popover>

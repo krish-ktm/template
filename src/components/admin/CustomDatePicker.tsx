@@ -177,47 +177,61 @@ export function CustomDatePicker({
       const singleSelected = daySelected && !isRange;
       const dayDisabled = isDisabled(day);
       
-      // Determine border radius classes for range selection
-      let borderRadiusClass = 'rounded-md';
-      
-      if (isRangeStart) {
-        borderRadiusClass = 'rounded-l-md';
-      } else if (isRangeEnd) {
-        borderRadiusClass = 'rounded-r-md';
+      // Base styles for the day cell
+      const baseStyles = `
+        relative h-8 sm:h-10 w-8 sm:w-10 
+        flex items-center justify-center 
+        text-xs sm:text-sm
+        transition-all duration-200
+        ${dayDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-800'}
+        ${isCurrentDay && !daySelected && !dayInHoverRange ? 'font-bold' : ''}
+      `;
+
+      // Background styles for different states
+      let bgStyles = '';
+      let shapeStyles = '';
+
+      if (daySelected || isRangeStart || isRangeEnd) {
+        // Selected state
+        bgStyles = 'bg-[#2B5C4B] text-white hover:bg-[#2B5C4B] z-10';
+        if (isRangeStart) {
+          shapeStyles = 'rounded-l-full';
+        } else if (isRangeEnd) {
+          shapeStyles = 'rounded-r-full';
+        } else if (singleSelected) {
+          shapeStyles = 'rounded-full';
+        }
       } else if (dayInRange) {
-        borderRadiusClass = '';
-      }
-      
-      if (isHoverRangeStart) {
-        borderRadiusClass = 'rounded-l-md';
-      } else if (isHoverRangeEnd) {
-        borderRadiusClass = 'rounded-r-md';
-      } else if (dayInHoverRange && !daySelected) {
-        borderRadiusClass = '';
-      }
-      
-      if (singleSelected) {
-        borderRadiusClass = 'rounded-md';
+        // In selected range
+        bgStyles = 'bg-[#2B5C4B] text-white hover:bg-[#2B5C4B]';
+      } else if (dayInHoverRange || isHoverRangeStart || isHoverRangeEnd) {
+        // Hover range state
+        bgStyles = 'bg-[#2B5C4B]/20 hover:bg-[#2B5C4B]/20';
+        if (isHoverRangeStart) {
+          shapeStyles = 'rounded-l-full';
+        } else if (isHoverRangeEnd) {
+          shapeStyles = 'rounded-r-full';
+        }
+      } else if (!dayDisabled) {
+        // Normal hover state
+        bgStyles = 'hover:bg-[#2B5C4B]/20 hover:rounded-full';
       }
       
       return (
         <button
           key={`day-${index}`}
-          type="button" // Prevent form submission
-          className={`relative h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center text-xs sm:text-sm ${borderRadiusClass} ${
-            dayInRange ? 'bg-[#2B5C4B] text-white' : ''
-          } ${daySelected ? 'bg-[#2B5C4B] text-white' : ''} 
-            ${dayInHoverRange && !daySelected ? 'bg-[#2B5C4B]/30 text-gray-800' : ''}
-            ${!dayDisabled && !daySelected && !dayInRange && !dayInHoverRange ? 'cursor-pointer hover:bg-[#2B5C4B]/10 transition-colors' : ''} 
-            ${(daySelected || dayInRange) ? 'hover:bg-[#2B5C4B] hover:text-white' : ''}
-            ${dayDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-800'} 
-            ${isCurrentDay && !daySelected && !dayInHoverRange ? 'font-bold' : ''}`}
+          type="button"
+          className={`
+            ${baseStyles}
+            ${bgStyles}
+            ${shapeStyles}
+          `}
           onClick={() => !dayDisabled && handleDateClick(day)}
           onMouseEnter={() => handleMouseEnter(day)}
           onMouseLeave={handleMouseLeave}
           disabled={dayDisabled}
         >
-          {format(day, 'd')}
+          <span className="relative z-10">{format(day, 'd')}</span>
         </button>
       );
     });

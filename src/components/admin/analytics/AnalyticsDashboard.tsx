@@ -4,7 +4,7 @@ import { LoadingSpinner } from '../../LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { checkSuperAdminAccess } from '../../../lib/auth';
-import { BarChart, Calendar, Users, TrendingUp, Clock, Activity, Percent, Layers } from 'lucide-react';
+import { Calendar, Users, Clock, Percent } from 'lucide-react';
 import { AppointmentStatusChart } from './AppointmentStatusChart';
 import { AppointmentTrendsChart } from './AppointmentTrendsChart';
 import { PeakHoursChart } from './PeakHoursChart';
@@ -12,7 +12,7 @@ import { ServicePopularityChart } from './ServicePopularityChart';
 import { PatientRatioChart } from './PatientRatioChart';
 import { PatientDemographicsChart } from './PatientDemographicsChart';
 import { SeasonalTrendsChart } from './SeasonalTrendsChart';
-import { DateRangePicker } from './DateRangePicker';
+import AnalyticsDateRangePicker from './AnalyticsDateRangePicker';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 interface AnalyticsData {
@@ -29,18 +29,13 @@ interface AnalyticsData {
   cancellationRate: number;
 }
 
-interface DateRange {
-  startDate: Date;
-  endDate: Date;
-}
-
 export function AnalyticsDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: subMonths(startOfMonth(new Date()), 5),
-    endDate: endOfMonth(new Date())
+  const [dateRange, setDateRange] = useState({
+    startDate: format(subMonths(startOfMonth(new Date()), 5), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
   });
 
   useEffect(() => {
@@ -64,16 +59,12 @@ export function AnalyticsDashboard() {
         throw new Error('Authentication required');
       }
 
-      // Format dates for query
-      const startDateStr = format(dateRange.startDate, 'yyyy-MM-dd');
-      const endDateStr = format(dateRange.endDate, 'yyyy-MM-dd');
-
       // Fetch appointments within date range
       const { data: appointments, error: appointmentsError } = await supabase
         .from('appointments')
         .select('*')
-        .gte('appointment_date', startDateStr)
-        .lte('appointment_date', endDateStr);
+        .gte('appointment_date', dateRange.startDate)
+        .lte('appointment_date', dateRange.endDate);
 
       if (appointmentsError) throw new Error(appointmentsError.message);
 
@@ -197,7 +188,7 @@ export function AnalyticsDashboard() {
     }
   };
 
-  const handleDateRangeChange = (newRange: DateRange) => {
+  const handleDateRangeChange = (newRange: { startDate: string; endDate: string }) => {
     setDateRange(newRange);
   };
 
@@ -209,9 +200,10 @@ export function AnalyticsDashboard() {
     <div className="space-y-6 pt-12 sm:pt-0 mt-4 sm:mt-0 px-2 sm:px-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-semibold text-gray-900">Analytics Dashboard</h2>
-        <DateRangePicker 
-          dateRange={dateRange}
-          onChange={handleDateRangeChange}
+        <AnalyticsDateRangePicker 
+          startDate={dateRange.startDate}
+          endDate={dateRange.endDate}
+          onSelect={handleDateRangeChange}
         />
       </div>
 
